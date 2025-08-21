@@ -1,0 +1,3 @@
+/home/mr-quantum/Windows/1_Darshan/CS/Programing/My Projects/3D_Reconstruction_Software/build/CMakeFiles/3D_Reconstruction_Software.dir
+/home/mr-quantum/Windows/1_Darshan/CS/Programing/My Projects/3D_Reconstruction_Software/build/CMakeFiles/edit_cache.dir
+/home/mr-quantum/Windows/1_Darshan/CS/Programing/My Projects/3D_Reconstruction_Software/build/CMakeFiles/rebuild_cache.dir
