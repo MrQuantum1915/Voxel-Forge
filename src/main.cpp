@@ -11,6 +11,36 @@
 #include <QStackedWidget>
 #include <QLabel>
 #include <QStyleFactory>
+#include <QFileDialog>
+
+class Image
+{
+private:
+    QString filePath;
+    QSize size;
+
+public:
+    Image(const QString &filePath, const QSize &size) : filePath(filePath), size(size) {}
+    QString getFilePath() const { return filePath; }
+    QSize getSize() const { return size; }
+};
+
+class ImageManager
+{
+private:
+    int imageCount;
+    QVector<Image> images;
+
+public:
+    ImageManager() : imageCount(0) {}
+    void addImage(const Image &image)
+    {
+        images.append(image);
+        imageCount++;
+    }
+    int getImageCount() const { return imageCount; }
+    QVector<Image> getImages() const { return images; }
+};
 
 int main(int argc, char *argv[])
 {
@@ -22,25 +52,22 @@ int main(int argc, char *argv[])
     QWidget *centralWidget = new QWidget;
     QHBoxLayout *mainLayout = new QHBoxLayout(centralWidget);
 
-    // Sidebar
     QListWidget *sidebar = new QListWidget;
     sidebar->addItem("Home");
     sidebar->addItem("Projects");
+    sidebar->addItem("Image Manager");
     sidebar->addItem("Settings");
     sidebar->setFixedWidth(150);
     mainLayout->addWidget(sidebar);
 
-    // Stacked widget for content
     QStackedWidget *stackedContent = new QStackedWidget;
 
-    // Home page
     QWidget *homePage = new QWidget;
     QVBoxLayout *homeLayout = new QVBoxLayout(homePage);
     QPushButton *button = new QPushButton("Launch COLMAP GUI");
     homeLayout->addWidget(button);
     homeLayout->addStretch();
 
-    // Settings page
     QWidget *settingsPage = new QWidget;
     QVBoxLayout *settingsLayout = new QVBoxLayout(settingsPage);
     QLabel *themeLabel = new QLabel("Select Theme:");
@@ -51,41 +78,64 @@ int main(int argc, char *argv[])
     settingsLayout->addWidget(themeCombo);
     settingsLayout->addStretch();
 
-    // Add pages to stacked widget
-    stackedContent->addWidget(homePage);     // index 0
-    stackedContent->addWidget(new QWidget);  // Projects placeholder, index 1
-    stackedContent->addWidget(settingsPage); // index 2
+    QWidget *imageManagerPage = new QWidget;
+    QVBoxLayout *imageManagerLayout = new QVBoxLayout(imageManagerPage);
+    QLabel *imageManagerLabel = new QLabel("Image");
+    imageManagerLayout->addWidget(imageManagerLabel);
+    imageManagerLayout->addStretch();
+    QPushButton *addImageButton = new QPushButton("Add Images");
+    imageManagerLayout->addWidget(addImageButton, 0, Qt::AlignCenter);
+    imageManagerLayout->addStretch();
+
+    QObject::connect(addImageButton, &QPushButton::clicked, [&]()
+                     {
+                         QStringList fileNames = QFileDialog::getOpenFileNames(&window, "Select Images", "", "Images (*.png *.jpg *.jpeg *.bmp)");
+                         if (!fileNames.isEmpty())
+                         {
+
+                             for (const QString &filePath : fileNames)
+                             {
+                                //  qDebug() << "Selected image:" << filePath;
+                             }
+                         }
+                     });
+
+    stackedContent->addWidget(homePage);
+    stackedContent->addWidget(new QWidget);
+    stackedContent->addWidget(imageManagerPage);
+    stackedContent->addWidget(settingsPage);
 
     mainLayout->addWidget(stackedContent);
 
     window.setCentralWidget(centralWidget);
 
-    // Menu bar
     QMenuBar *menuBar = window.menuBar();
     QMenu *fileMenu = menuBar->addMenu("File");
+    QAction *openProjectAction = fileMenu->addAction("Open Project");
     QAction *exitAction = fileMenu->addAction("Exit");
     QObject::connect(exitAction, &QAction::triggered, &app, &QApplication::quit);
     QMenu *helpMenu = menuBar->addMenu("Help");
     helpMenu->addAction("About");
 
-    QObject::connect(button, &QPushButton::clicked, [&]() {
-        QProcess::startDetached("colmap", QStringList() << "gui");
-    });
+    QObject::connect(button, &QPushButton::clicked, [&]()
+                     { QProcess::startDetached("colmap", QStringList() << "gui"); });
 
-    // Sidebar navigation
     QObject::connect(sidebar, &QListWidget::currentRowChanged, stackedContent, &QStackedWidget::setCurrentIndex);
     sidebar->setCurrentRow(0);
 
-    // Theme switching
-    auto setTheme = [&](int index) {
-        if (index == 0) { // Black
+    auto setTheme = [&](int index)
+    {
+        if (index == 0)
+        {
             app.setStyle(QStyleFactory::create("Fusion"));
-        } else { // White
-            app.setStyleSheet("QWidget { background: #fff; color: #222; } QPushButton { background: #eee; color: #222; } QListWidget { background: #fff; color: #222; } QComboBox { background: #fff; color: #222; } QMenuBar { background: #fff; color: #222; }");
+        }
+        else
+        {
+            app.setStyleSheet("QWidget { background: #1b1b1bff; color: #ffffffff; } QPushButton { background:  #1b1b1bff; color: #ffffffff; } QListWidget { background:  #1b1b1bff; color: #ffffffff; } QComboBox { background:  #1b1b1bff; color: #ffffffff; } QMenuBar { background:  #1b1b1bff; color: #ffffffff; }");
         }
     };
     QObject::connect(themeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), setTheme);
-    setTheme(0); // Default to black
+    setTheme(0);
 
     window.resize(1000, 600);
     window.show();
