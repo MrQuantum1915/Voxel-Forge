@@ -12,6 +12,33 @@
 #include <QLabel>
 #include <QStyleFactory>
 #include <QFileDialog>
+#include <QDir>
+#include <QVector>
+#include <QDebug>
+
+QString projectPath = QDir::homePath() + "/Voxel-Forge/";
+
+class Projects
+{
+public:
+    QVector<QString> getProjects()
+    {
+        QVector<QString> softwareStoragePath;
+
+        QDir directory(projectPath);
+        if (directory.exists())
+        {
+            QStringList dirs = directory.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+
+            for (const QString &projectName : dirs)
+            {
+                softwareStoragePath.append(projectName);
+            }
+        }
+
+        return softwareStoragePath;
+    }
+};
 
 class Image
 {
@@ -45,6 +72,7 @@ public:
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    QString currentProject = nullptr;
 
     QMainWindow window;
     window.setWindowTitle("Voxel Forge");
@@ -78,6 +106,39 @@ int main(int argc, char *argv[])
     settingsLayout->addWidget(themeCombo);
     settingsLayout->addStretch();
 
+    Projects p;
+    const QVector<QString> projects = p.getProjects();
+
+    QWidget *projectsPage = new QWidget;
+    QVBoxLayout *projectsLayout = new QVBoxLayout(projectsPage);
+
+    QLabel *projectsLabel = new QLabel("Projects");
+    projectsLabel->setAlignment(Qt::AlignCenter);
+    projectsLayout->addWidget(projectsLabel);
+
+    QListWidget *projectList = new QListWidget;
+    projectsLayout->addWidget(projectList);
+    projectsLayout->addStretch();
+
+    QListWidgetItem *currentItem = projectList->currentItem();
+    for (const QString &projectName : projects)
+    {
+        projectList->addItem(projectName);
+    }
+    QPushButton *selectProjectButton = new QPushButton("Select Project");
+    projectsLayout->addWidget(selectProjectButton, 0, Qt::AlignCenter);
+    projectsLayout->addStretch();
+    QObject::connect(selectProjectButton, &QPushButton::clicked, [&]()
+                     {
+                         if (currentItem)
+                         {
+                             currentProject = currentItem->text();
+                             qDebug() << "Selected project:" << currentProject;
+                         } });
+
+
+
+
     QWidget *imageManagerPage = new QWidget;
     QVBoxLayout *imageManagerLayout = new QVBoxLayout(imageManagerPage);
     QLabel *imageManagerLabel = new QLabel("Image");
@@ -95,13 +156,12 @@ int main(int argc, char *argv[])
 
                              for (const QString &filePath : fileNames)
                              {
-                                //  qDebug() << "Selected image:" << filePath;
+                                 qDebug() << "Selected image:" << filePath;
                              }
-                         }
-                     });
+                         } });
 
     stackedContent->addWidget(homePage);
-    stackedContent->addWidget(new QWidget);
+    stackedContent->addWidget(projectsPage);
     stackedContent->addWidget(imageManagerPage);
     stackedContent->addWidget(settingsPage);
 
