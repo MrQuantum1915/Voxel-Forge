@@ -34,9 +34,9 @@ RUN apt-get update && apt-get install -y \
     libopencv-dev libcgal-dev libcgal-qt5-dev libusb-1.0-0-dev libsuitesparse-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/colmap/colmap.git /colmap && \
-    mkdir /colmap/build && cd /colmap/build && \
-    cmake .. && make -j$(nproc) && make install
+# RUN git clone https://github.com/colmap/colmap.git /colmap && \
+#     mkdir /colmap/build && cd /colmap/build && \
+#     cmake .. && make -j$(nproc) && make install
 
 WORKDIR /src
 COPY . /src
