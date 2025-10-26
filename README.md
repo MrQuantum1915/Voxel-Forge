@@ -1,4 +1,4 @@
-# Voxel-Forge  (Legacy Version- Executable Based Integration)
+# Voxel-Forge  (Legacy Version - Executable Based Integration)
 
 ---
 
