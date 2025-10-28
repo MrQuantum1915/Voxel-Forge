@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "voxel-forge",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "qt5-base",
+    "openmvg",
+    "openmvs"
+  ]
+}
