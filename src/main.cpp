@@ -1,3 +1,136 @@
+// Copyright Darshan Patel [Mr.Quantum_1915]:)
+
+// // not using "using namespace std;" to follow best practices.
+// #include <string>
+// #include <filesystem>
+
+// // Qt
+// #include <QApplication>
+// #include <QPushButton>
+// #include <QWidget>
+// #include <QVBoxLayout>
+// #include <QProcess>
+// #include <QMenuBar>
+// #include <QMainWindow>
+// #include <QListWidget>
+// #include <QHBoxLayout>
+// #include <QComboBox>
+// #include <QStackedWidget>
+// #include <QLabel>
+// #include <QStyleFactory>
+// #include <QFileDialog>
+// #include <QDir>
+// #include <QVector>
+// #include <QDebug>
+// #include <QTextEdit> // added for the log viewer
+// #include <QFile>
+// #include <QFileInfo>
+// #include <QStandardPaths>
+
+// // threading to keep UI responsive while reconstruction is running
+// #include <QThread>
+// #include <atomic> // for cancel button logic
+
+// // openmvs
+// #include <openmvs/MVS.h> // main openmvs scene header
+
+// #include <opencv2/core.hpp>
+
+// // openmvg
+// #include "openMVG/sfm/sfm_data.hpp"
+// #include "openMVG/sfm/sfm_data_io.hpp"
+// #include "openMVG/sfm/pipelines/global/sfm_global_engine_relative_motions.hpp"
+// #include "openMVG/features/feature.hpp"
+
+// // for stage 3 of openMVG
+// #include "openMVG/matching/indMatch.hpp"
+// #include "openMVG/matching/indMatch_utils.hpp"
+// #include "openMVG/matching_image_collection/Pair_Builder.hpp"
+// #include "openMVG/matching_image_collection/Matcher_Regions.hpp"
+// #include "openMVG/matching_image_collection/Cascade_Hashing_Matcher_Regions.hpp"
+
+// // for stage 4 of openMVG
+// #include "openMVG/matching_image_collection/GeometricFilter.hpp"
+// #include "openMVG/matching_image_collection/F_ACRobust.hpp"
+
+// // for stage 5 of openMVG
+// #include "openMVG/sfm/pipelines/global/sfm_global_engine_relative_motions.hpp"
+// #include "openMVG/sfm/sfm_data_triangulation.hpp" // for creating the PLY file
+
+// // stage 7 of openMVG
+// #include "openmvs/MVS/Interface.h"
+// #include "openMVG/cameras/Camera_Pinhole.hpp"
+// #include "openMVG/cameras/Camera_undistort_image.hpp"
+// #include "openMVG/image/image_io.hpp"
+
+// // For multi-threading the undistort step
+// #ifdef OPENMVG_USE_OPENMP
+// #include <omp.h>
+// #endif
+
+// #include "openMVG/sfm/sfm_data_triangulation.hpp"
+// #include "openMVG/sfm/pipelines/sfm_engine.hpp"
+// #include "openMVG/sfm/pipelines/sfm_regions_provider.hpp"
+// #include "openMVG/matching_image_collection/Matcher.hpp"
+// #include "openMVG/matching_image_collection/GeometricFilter.hpp"
+// #include "openMVG/system/timer.hpp"
+
+/////////////////////////////////------2////////////////////////////////
+// --- START NON-QT BLOCK ---
+// C++ Standard Libraries
+// --- START NON-QT BLOCK ---
+// C++ Standard Libraries
+#include <string>
+#include <atomic> // for cancel button logic
+
+// --- FIX FOR MACRO CONFLICT ---
+// Qt or a system header defines D2R/R2D as macros.
+// We must undefine them *before* MVS.h includes OpenMVG's numeric.h.
+
+// --- END FIX ---
+
+// OpenMVS (MUST BE FIRST to prevent OpenCV redefinition errors)
+#include <openmvs/MVS.h> // Main OpenMVS scene header
+
+#undef D2R // because it was causing macro conflict as there are different definitions of this macro in std and ohter lib
+#undef R2D
+
+// OpenCV (Must be AFTER OpenMVS)
+#include <opencv2/core.hpp>
+
+#include "openmvg_wrappers.hpp"
+
+// OpenMVG
+#include "openMVG/sfm/sfm_data.hpp"
+#include "openMVG/sfm/sfm_data_io.hpp"
+#include "openMVG/features/feature.hpp"
+#include "openMVG/sfm/pipelines/sfm_engine.hpp"
+#include "openMVG/sfm/pipelines/sfm_regions_provider.hpp"
+#include "openMVG/matching/indMatch.hpp"
+#include "openMVG/matching/indMatch_utils.hpp"
+#include "openMVG/matching_image_collection/Pair_Builder.hpp"
+#include "openMVG/matching_image_collection/Matcher_Regions.hpp"
+#include "openMVG/matching_image_collection/Cascade_Hashing_Matcher_Regions.hpp"
+#include "openMVG/matching_image_collection/GeometricFilter.hpp"
+#include "openMVG/matching_image_collection/F_ACRobust.hpp"
+#include "openMVG/sfm/pipelines/global/sfm_global_engine_relative_motions.hpp"
+#include "openMVG/sfm/sfm_data_triangulation.hpp"
+#include "openMVG/sfm/sfm_data_colorization.hpp"
+#include "openMVG/cameras/Camera_Pinhole.hpp"
+#include "openMVG/cameras/Camera_undistort_image.hpp"
+#include "openMVG/image/image_io.hpp"
+#include "openMVG/system/timer.hpp"
+#include "openMVG/system/loggerprogress.hpp" // For progress bars
+#include "openMVG/third_party/stlplus3/filesystemSimplified/file_system.hpp"
+
+// OpenMP
+#ifdef OPENMVG_USE_OPENMP
+#include <omp.h>
+#endif
+// --- END NON-QT BLOCK ---
+
+// --- QT INCLUDES ---
+// (All Qt headers come AFTER the libraries above)
 #include <QApplication>
 #include <QPushButton>
 #include <QWidget>
@@ -15,11 +148,13 @@
 #include <QDir>
 #include <QVector>
 #include <QDebug>
-#include <iostream>
-#include <QTextEdit> // added for the log viewer
+#include <QTextEdit>
 #include <QFile>
 #include <QFileInfo>
 #include <QStandardPaths>
+#include <QThread> // Must be with Qt includes
+
+// opencv for video to frame extraction
 
 // note: ptrname->fxn() is same as (*ptrname).fxn()
 QString userFilesPath = QDir::homePath() + "/Voxel-Forge/";
@@ -61,15 +196,11 @@ public:
                 folders.push_back(folder);
             }
         }
-        for (int i = 0; i < folders.size(); i++)
-        {
-            std::cout << folders[i].toStdString() << std::endl;
-        }
         return folders;
     }
 };
 
-class Image
+class ProjectImage
 {
 private:
     QString imageFilePath;
@@ -77,7 +208,7 @@ private:
     QSize size;
 
 public:
-    Image(const QString &imageFilePath, const QSize &size) : imageFilePath(imageFilePath), size(size) {}
+    ProjectImage(const QString &imageFilePath, const QSize &size) : imageFilePath(imageFilePath), size(size) {}
     QString getimageFilePath() const { return imageFilePath; }
     QSize getSize() const { return size; }
 };
@@ -86,17 +217,17 @@ class ImageManager : private Project
 {
 private:
     int imageCount;
-    QVector<Image> images;
+    QVector<ProjectImage> images;
 
 public:
     ImageManager() : imageCount(0) {}
-    void addImage(const Image &image)
+    void addImage(const ProjectImage &image)
     {
         images.append(image);
         imageCount++;
     }
     int getImageCount() const { return imageCount; }
-    QVector<Image> getImages() const { return images; }
+    QVector<ProjectImage> getImages() const { return images; }
 };
 
 class PhotogrammetryController : public QObject
@@ -104,7 +235,7 @@ class PhotogrammetryController : public QObject
     Q_OBJECT
 
 public:
-    enum PipelineStage
+    enum PipelineStage // better than using strings :)
     {
         Idle,
         InitImageListing,
@@ -112,9 +243,8 @@ public:
         ComputeMatches,
         GeometricFilter,
         GlobalSfM,
-        ConvertToPLYModel,
+        // ConvertToPLYModel, // Note: this stage is now just part of GlobalSfM
         ExportToMVS,
-        // First OpenMVS step
         Densify,
         ReconstructMesh,
         RefineMesh,
@@ -123,27 +253,12 @@ public:
         Error
     };
 
-    explicit PhotogrammetryController(QObject *parent = nullptr) : QObject(parent), process(new QProcess(this)), currentStage(Idle)
-    {
-        // connect all necessary signals from the QProcess object
-        connect(process, &QProcess::readyReadStandardOutput, this, &PhotogrammetryController::handleProcessOutput);
-        connect(process, &QProcess::readyReadStandardError, this, &PhotogrammetryController::handleProcessError);
-        connect(process, &QProcess::errorOccurred, this, &PhotogrammetryController::handleProcessStartError);
-        connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, &PhotogrammetryController::handleProcessFinished);
-    }
-    // cancel the running pipeline
-    void cancelPipeline()
-    {
-        if (process && process->state() != QProcess::NotRunning)
-        {
-            process->kill();                // forcefully terminate
-            process->waitForFinished(3000); // wait up to 3s for it to die
-            emit logMessage("<font color='orange'><b>Pipeline was cancelled by user.</b></font>");
-            currentStage = Idle;
-            emit pipelineFinished(false);
-        }
-    }
+    // explicit prevents the compiler from using this constructor for implicit conversions. Like accidentally converting the data type of the argument to the class object it self.
+    explicit PhotogrammetryController(QObject *parent = nullptr)
+        : QObject(parent), currentStage(Idle), cancelRequest(false) {}
 
+    // will run on worker thread (main thread for GUI)
+public slots: // simply its  a list of member functions then are accesed when a specific signal is emited (we connect signal to this member functions for tasks to be done)
     void startPipeline(const QString &projectPath)
     {
         if (currentStage != Idle)
@@ -151,203 +266,137 @@ public:
             emit logMessage("Pipeline is already running.");
             return;
         }
+
+        cancelRequest = false;
+        currentStage = InitImageListing;
         this->projectPath = projectPath;
         this->imagePath = projectPath + "/images";
         this->outputPath = projectPath + "/output";
 
         QDir().mkpath(outputPath);
 
-        emit logMessage("<b>Starting OpenMVG Pipeline...</b>");
-        currentStage = InitImageListing;
-        executeNextStage();
+        std::string sImagePath = imagePath.toStdString();
+        std::string sMatchesDir = (outputPath + "/matches").toStdString();
+        std::string sReconDir = (outputPath + "/reconstruction").toStdString();
+        std::string sMVSSceneFile = (outputPath + "/scene.mvs").toStdString();
+
+        // harcoded. better make this a setting!
+        std::string sSensorDb = "/mnt/WinDisk/1_Darshan/CS/Programing/Projects/3D_Reconstruction_Software/Voxel-Forge/build/vcpkg_installed/x64-linux/share/openmvg/sensor_width_camera_database.txt";
+
+        // create directories
+        // mk folder using QDir
+        QDir().mkpath(QString::fromStdString(sMatchesDir));
+        QDir().mkpath(QString::fromStdString(sReconDir));
+
+        // hold scene data in memory
+        openMVG::sfm::SfM_Data sfm_data;
+        MVS::Scene mvs_scene;
+
+        emit logMessage("<b>Behold! Reconstruction Pipeline is about to begin...</b>");
+
+        try
+        {
+            while (currentStage != Finished && currentStage != Error && !cancelRequest)
+            {
+                switch (currentStage)
+                {
+                    // stage 1 - image listing
+                case InitImageListing:
+                {
+                    emit logMessage("--- Stage 1: Image Listing ---");
+
+                    if (!OpenMVG_Wrappers::RunImageListing(
+                            sImagePath,
+                            sReconDir,
+                            sSensorDb))
+                    {
+                        throw std::runtime_error("Image Listing failed.");
+                    }
+
+                    // Load the generated sfm_data.json
+                    std::string sSfM_Data_Filename = sReconDir + "/sfm_data.json";
+                    if (!Load(sfm_data, sSfM_Data_Filename, openMVG::sfm::ESfM_Data(openMVG::sfm::VIEWS | openMVG::sfm::INTRINSICS)))
+                    {
+                        throw std::runtime_error("Failed to load sfm_data.json");
+                    }
+
+                    emit logMessage("✓ Image Listing complete. Found " +
+                                    QString::number(sfm_data.GetViews().size()) + " views.");
+                    currentStage = ComputeFeatures;
+                    break;
+                }
+
+                // stage 2
+                case ComputeFeatures:
+                {
+                    emit logMessage("---Stage 2: Compute Features ---");
+
+                    if(!OpenMVG_Wrappers::RunComputeFeatures(
+                        sfm_data,
+                        sReconDir))
+                    {
+                        throw std::runtime_error("Compute Features failed.");
+                    }
+                    currentStage = ComputeMatches;
+                    break;
+                }
+                }
+
+                if (cancelRequest)
+                {
+                    emit logMessage("<font color='orange'><b>Pipeline was cancelled by user.</b></font>");
+                    currentStage = Idle;
+                    emit pipelineFinished(false);
+                }
+                else if (currentStage == Finished)
+                {
+                    emit logMessage("<font color='green'><b>Pipeline completed successfully.</b></font>");
+                    currentStage = Idle;
+                    emit pipelineFinished(true);
+                }
+            }
+        }
+        catch (const std::exception &e)
+        {
+            emit logMessage("<font color='red'><b>PIPELINE ERROR: " + QString(e.what()) + "</b></font>");
+            currentStage = Error;
+            emit pipelineFinished(false);
+        }
+        catch (...)
+        {
+            emit logMessage("<font color='red'><b>An unknown critical error occurred.</b></font>");
+            currentStage = Error;
+            emit pipelineFinished(false);
+        }
     }
 
+    void cancelPipeline()
+    {
+        cancelRequest = true;
+    }
 signals:
     void logMessage(const QString &message);
     void pipelineFinished(bool success);
 
-private slots:
-    void handleProcessOutput() { emit logMessage(process->readAllStandardOutput()); }
-    void handleProcessError() { emit logMessage("<font color='red'>" + process->readAllStandardError() + "</font>"); }
-
-    void handleProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
-    {
-        if (exitStatus == QProcess::CrashExit || exitCode != 0)
-        {
-            emit logMessage("<font color='red'><b>Pipeline failed.</b></font>");
-            currentStage = Error;
-            emit pipelineFinished(false);
-        }
-        else
-        {
-            currentStage = static_cast<PipelineStage>(static_cast<int>(currentStage) + 1);
-            if (currentStage == Finished)
-            {
-                emit logMessage("<font color='green'><b>OpenMVG pipeline completed successfully.</b></font>");
-                emit pipelineFinished(true);
-                currentStage = Idle;
-            }
-            else
-            {
-                executeNextStage();
-            }
-        }
-    }
-
-    void handleProcessStartError(QProcess::ProcessError error)
-    {
-        QString errorMessage;
-        switch (error)
-        {
-        case QProcess::FailedToStart:
-            errorMessage = "The process failed to start. Check if the executable exists and you have permissions.";
-            break;
-        case QProcess::Crashed:
-            errorMessage = "The process crashed after starting.";
-            break;
-        case QProcess::Timedout:
-            errorMessage = "The process timed out.";
-            break;
-        default:
-            errorMessage = "An unknown error occurred with the process.";
-            break;
-        }
-        emit logMessage("<font color='red'><b>PROCESS ERROR: " + errorMessage + "</b></font>");
-        currentStage = Error;
-        emit pipelineFinished(false);
-    }
-
 private:
-    void executeNextStage()
-    {
-        QString program;
-        QStringList arguments;
-        QString sensorDb = "/home/mr-quantum/openMVG/src/openMVG/exif/sensor_width_database/sensor_width_camera_database.txt";
-        QString matchesDir = outputPath + "/matches";
-
-        // Define paths for OpenMVS files for clarity
-        QString mvsScene = outputPath + "/scene.mvs";
-        QString mvsDense = outputPath + "/scene_dense.mvs";
-        QString mvsMesh = outputPath + "/scene_mesh.mvs";
-        QString mvsRefinedMesh = outputPath + "/scene_mesh_refined.mvs";
-        QString mvsTexturedMesh = outputPath + "/scene_mesh_refined_textured.mvs";
-
-        switch (currentStage)
-        {
-        case InitImageListing:
-            emit logMessage("--- Stage 1: Image Listing ---");
-            QDir().mkpath(matchesDir);
-            program = "openMVG_main_SfMInit_ImageListing";
-            arguments << "-i" << imagePath << "-o" << matchesDir << "-d" << sensorDb;
-            //  add the focal length here if  images lack EXIF data
-            // arguments << "-f" << "2304";
-            break;
-        case ComputeFeatures:
-            emit logMessage("--- Stage 2: Feature Computation ---");
-            program = "openMVG_main_ComputeFeatures";
-            arguments << "-i" << matchesDir + "/sfm_data.json" << "-o" << matchesDir << "-p" << "NORMAL";
-            break;
-        case ComputeMatches:
-            emit logMessage("--- Stage 3: Match Computation (Putative) ---");
-            program = "openMVG_main_ComputeMatches";
-            arguments << "-i" << matchesDir + "/sfm_data.json" << "-o" << matchesDir + "/matches.putative.bin";
-            break;
-        case GeometricFilter:
-            emit logMessage("--- Stage 4: Geometric Filtering ---");
-            program = "openMVG_main_GeometricFilter";
-            arguments << "-i" << matchesDir + "/sfm_data.json"
-                      << "-m" << matchesDir + "/matches.putative.bin"
-                      << "-o" << matchesDir + "/matches.f.bin";
-            break;
-        case GlobalSfM:
-            emit logMessage("--- Stage 5: Global Reconstruction ---");
-            QDir().mkpath(outputPath + "/reconstruction/global");
-            program = "openMVG_main_SfM";
-            arguments << "--sfm_engine" << "GLOBAL"
-                      << "-i" << matchesDir + "/sfm_data.json"
-                      << "--match_file" << matchesDir + "/matches.f.bin"
-                      << "-o" << outputPath + "/reconstruction/global";
-            break;
-        case ConvertToPLYModel:
-            emit logMessage("--- Stage 6: Converting to PLY Model ---");
-            program = "openMVG_main_ComputeSfM_DataColor";
-            QDir().mkpath(outputPath + "/reconstruction/global/sparse_3D_model");
-            arguments << "-i" << outputPath + "/reconstruction/global/sfm_data.bin"
-                      << "-o" << outputPath + "/reconstruction/global/sparse_3D_model/model.ply";
-            break;
-
-        case ExportToMVS:
-            emit logMessage("--- Stage 7: Exporting to OpenMVS ---");
-            // This is an OpenMVG tool, so we use its path
-            program = "openMVG_main_openMVG2openMVS";
-            arguments << "-i" << outputPath + "/reconstruction/global/sfm_data.bin"
-                      << "-o" << mvsScene
-                      << "-d" << matchesDir;
-            break;
-
-        // --- OpenMVS Stages with Full Paths ---
-        case Densify:
-            emit logMessage("--- Stage 7: Densifying Point Cloud ---");
-            program = "/usr/local/bin/OpenMVS/DensifyPointCloud";
-            arguments << mvsScene << "--working-folder" << outputPath;
-            break;
-        case ReconstructMesh:
-            emit logMessage("--- Stage 8: Reconstructing Mesh ---");
-            program = "/usr/local/bin/OpenMVS/ReconstructMesh";
-            arguments << mvsDense << "--working-folder" << outputPath;
-            break;
-        case RefineMesh:
-            emit logMessage("--- Stage 9: Refining Mesh ---");
-            program = "/usr/local/bin/OpenMVS/RefineMesh";
-            arguments << mvsMesh << "--working-folder" << outputPath;
-            break;
-        case TextureMesh:
-            emit logMessage("--- Stage 10: Texturing Mesh ---");
-            program = "/usr/local/bin/OpenMVS/TextureMesh";
-            arguments << mvsRefinedMesh << "--working-folder" << outputPath;
-            break;
-
-        default:
-            return;
-        }
-
-        QString resolvedProgram = program;
-        if (!QFileInfo(program).isAbsolute())
-        {
-            QString found = QStandardPaths::findExecutable(program);
-            if (!found.isEmpty())
-            {
-                resolvedProgram = found;
-            }
-        }
-
-        QFileInfo exeInfo(resolvedProgram);
-        if (!exeInfo.exists())
-        {
-            emit logMessage("<font color='red'><b>PROCESS ERROR: Executable not found: " + resolvedProgram + "</b></font>");
-            currentStage = Error;
-            emit pipelineFinished(false);
-            return;
-        }
-        if (!exeInfo.isExecutable())
-        {
-            emit logMessage("<font color='red'><b>PROCESS ERROR: Executable is not marked executable: " + resolvedProgram + "</b></font>");
-            currentStage = Error;
-            emit pipelineFinished(false);
-            return;
-        }
-
-        emit logMessage("Starting: " + exeInfo.absoluteFilePath() + " " + arguments.join(' '));
-        process->start(resolvedProgram, arguments);
-    }
-
-    QProcess *process;
+    std::atomic<bool> cancelRequest;
     PipelineStage currentStage;
     QString projectPath, imagePath, outputPath;
 };
 
-class ExportModel{};
-class 
+class PipelineStarter : public QObject
+{
+    Q_OBJECT
+signals:
+    void requestStartPipeline(const QString &projectPath);
+};
+
+// class Video
+// {
+// };
+// class ExportModel
+// {
+// };
 
 int main(int argc, char *argv[])
 {
@@ -598,29 +647,77 @@ int main(int argc, char *argv[])
         } });
 
     // controller and pipeline connections
-    PhotogrammetryController *photoController = new PhotogrammetryController(&window);
 
-    QObject::connect(runPipelineButton, &QPushButton::clicked, [&]()
+    // PhotogrammetryController *photoController = new PhotogrammetryController(&window);
+    // QObject::connect(runPipelineButton, &QPushButton::clicked, [&]()
+    //                  {
+    //     if (projectFullPath.isEmpty()) {
+    //         logViewer->setHtml("<font color='red'>Error: No project selected.</font>");
+    //         return;
+    //     }
+    //     logViewer->clear();
+    //     runPipelineButton->setEnabled(false); // prevent multiple clicks
+    //     cancelPipelineButton->setEnabled(true);
+    //     photoController->startPipeline(projectFullPath); });
+    // QObject::connect(photoController, &PhotogrammetryController::logMessage, logViewer, &QTextEdit::append);
+    // // when pipeline finishes, re-enable Run and disable Cancel
+    // QObject::connect(photoController, &PhotogrammetryController::pipelineFinished, [&](bool success)
+    //                  {
+    //     runPipelineButton->setEnabled(true);
+    //     cancelPipelineButton->setEnabled(false); });
+    // // Cancel button wiring
+    // QObject::connect(cancelPipelineButton, &QPushButton::clicked, [&]()
+    //                  {
+    //     cancelPipelineButton->setEnabled(false);
+    //     photoController->cancelPipeline(); });
+
+    QThread *workerThread = new QThread;
+
+    // 2. Create the controller (with no parent)
+    PhotogrammetryController *photoController = new PhotogrammetryController;
+
+    // 3. Move the controller to the new thread
+    photoController->moveToThread(workerThread);
+
+    PipelineStarter *starter = new PipelineStarter;
+    // Connect the signal to the worker's slot
+    QObject::connect(starter, &PipelineStarter::requestStartPipeline,
+                     photoController, &PhotogrammetryController::startPipeline);
+
+    // --- Controller and Pipeline Connections ---
+    // Connect GUI (main thread) to Controller (worker thread)
+    // When "Run" is clicked, it will call the 'startPipeline' slot on the worker thread.
+    QObject::connect(runPipelineButton, &QPushButton::clicked, [&, starter]()
                      {
-        if (projectFullPath.isEmpty()) {
-            logViewer->setHtml("<font color='red'>Error: No project selected.</font>");
-            return;
-        }
-        logViewer->clear();
-        runPipelineButton->setEnabled(false); // prevent multiple clicks
-        cancelPipelineButton->setEnabled(true);
-        photoController->startPipeline(projectFullPath); });
+    if (projectFullPath.isEmpty()) {
+        logViewer->setHtml("<font color='red'>Error: No project selected.</font>");
+        return;
+    }
+    logViewer->clear(); 
+    runPipelineButton->setEnabled(false);
+    cancelPipelineButton->setEnabled(true);
+    
+    // Emit signal instead of direct call
+    emit starter->requestStartPipeline(projectFullPath); });
+
+    // Connect Controller (worker thread) back to GUI (main thread)
+    // These signal/slot connections are thread-safe
     QObject::connect(photoController, &PhotogrammetryController::logMessage, logViewer, &QTextEdit::append);
-    // when pipeline finishes, re-enable Run and disable Cancel
     QObject::connect(photoController, &PhotogrammetryController::pipelineFinished, [&](bool success)
                      {
         runPipelineButton->setEnabled(true);
         cancelPipelineButton->setEnabled(false); });
-    // Cancel button wiring
-    QObject::connect(cancelPipelineButton, &QPushButton::clicked, [&]()
-                     {
-        cancelPipelineButton->setEnabled(false);
-        photoController->cancelPipeline(); });
+
+    // Connect Cancel button (main thread) to Controller slot (worker thread)
+    QObject::connect(cancelPipelineButton, &QPushButton::clicked, photoController, &PhotogrammetryController::cancelPipeline);
+
+    // Clean up the thread when the application quits
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, workerThread, &QThread::quit);
+    QObject::connect(workerThread, &QThread::finished, photoController, &QObject::deleteLater);
+    QObject::connect(workerThread, &QThread::finished, workerThread, &QObject::deleteLater);
+
+    // 4. Start the worker thread
+    workerThread->start();
 
     // global connections and style
     QObject::connect(sidebar, &QListWidget::currentRowChanged, stackedContent, &QStackedWidget::setCurrentIndex);
