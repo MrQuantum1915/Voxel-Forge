@@ -346,8 +346,6 @@ private:
     QString projectPath, imagePath, outputPath;
 };
 
-class ExportModel{};
-class 
 
 int main(int argc, char *argv[])
 {
