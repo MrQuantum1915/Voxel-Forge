@@ -5,6 +5,10 @@
   "dependencies": [
     "qt5-base",
     "openmvg",
-    "openmvs"
+    "openmvs",
+    {
+      "name": "opencv4",
+      "features": ["ffmpeg"]
+    }
   ]
 }

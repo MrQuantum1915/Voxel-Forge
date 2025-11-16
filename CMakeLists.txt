@@ -1,22 +1,3 @@
-# cmake_minimum_required(VERSION 3.10)
-# project(Voxel-Forge LANGUAGES CXX)
-
-# set(CMAKE_CXX_STANDARD 17)
-# set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# # find Qt5
-# find_package(Qt5 COMPONENTS Widgets REQUIRED)
-
-# # enable automatic MOC, UIC, and RCC
-# set(CMAKE_AUTOMOC ON)
-# set(CMAKE_AUTOUIC ON)
-# set(CMAKE_AUTORCC ON)
-
-
-# add_executable(Voxel-Forge src/main.cpp)
-# target_link_libraries(Voxel-Forge PRIVATE Qt5::Core Qt5::Widgets)
-
-
 cmake_minimum_required(VERSION 3.18)
 project(Voxel-Forge LANGUAGES CXX)
 
@@ -27,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
+
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/x64-linux/include) # Needed because the vcpkg showed error of not being able to find OpenMVG include files due to may be some broken script in OpenMVG cmake files. So Manually linking the directory with there names as done below for OpenMVG alone.
 
@@ -45,10 +27,27 @@ find_package(OpenMVS REQUIRED)
 # Explicitly link to vcpkg libs
 link_directories(${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/x64-linux/lib)
 
+
+
 add_executable(
-    Voxel-Forge src/main.cpp
-    src/openmvg_wrappers.cpp
+    Voxel-Forge 
+    src/main.cpp
+    
+    # UI files
+    src/mainwindow.cpp
+    src/mainwindow.h
+    src/cubewidget.cpp
+    src/cubewidget.h
+    src/resources.qrc
+    
+    # Backend
+    src/backend.cpp
+    src/backend.h
+    
+    # Backend wrappers
     src/openmvg_wrappers.hpp
+    src/stage1.cpp
+    src/stage2.cpp
 )
 
 target_include_directories(Voxel-Forge PRIVATE

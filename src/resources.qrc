@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>icons/dense.jpg</file>
+        <file>icons/model.jpg</file>
+        <file>icons/sparse.jpg</file>
+        <file>icons/vr.jpg</file>
+        <file>icons/logo.jpg</file>
+    </qresource>
+</RCC>

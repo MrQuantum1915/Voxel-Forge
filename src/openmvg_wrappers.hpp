@@ -1,15 +1,18 @@
 #pragma once // helps prevent multiple inclusions into same src code
 
 #include <string>
+#include <functional>
 
 namespace OpenMVG_Wrappers
 {
+
+    using LogCallback = std::function<void(const std::string&)>;
 
     bool RunImageListing(
         const std::string &sImageDir,
         const std::string &sOutputDir,
         const std::string &sSensorDb = "",
-
+        LogCallback logCallback = nullptr,
         // optional (read docs bro :)) https://openmvg.readthedocs.io/en/latest/software/SfM/SfMInit_ImageListing/#:~:text=Required%20parameters%3A
         double focal_pixels = -1.0,
         const std::string &sKmatrix = "",
@@ -21,5 +24,16 @@ namespace OpenMVG_Wrappers
 
     );
 
-    // Add wrappers for other stages...
+    bool RunComputeFeatures(
+        std::string sSfM_Data_Filename,
+        std::string sOutDir = "",
+        LogCallback logCallback = nullptr,
+
+        // optional
+        std::string sImage_Describer_Method = "SIFT_ANATOMY", // its free version :) SIFT is non-free and  vcpkg does not support non-free modules
+        bool bUpRight = false,
+        bool bForce = false,
+        std::string sFeaturePreset = "NORMAL",
+        int iNumThreads = 0
+    );
 }
