@@ -48,6 +48,8 @@ add_executable(
     src/openmvg_wrappers.hpp
     src/stage1.cpp
     src/stage2.cpp
+    src/stage3.cpp
+    src/stage4.cpp
 )
 
 target_include_directories(Voxel-Forge PRIVATE
@@ -62,19 +64,22 @@ target_link_libraries(Voxel-Forge PRIVATE
     Qt5::Widgets
 
     # link OpenMVG libs
-    # link OpenMVG libs
+    # link OpenMVG libs in proper order (most dependent first)
     openMVG_sfm
+    openMVG_matching_image_collection
+    openMVG_multiview
     openMVG_features
     openMVG_matching
     openMVG_image
     openMVG_system
     openMVG_exif
-    # openMVG_geodesy
-    # openMVG_cameras
     openMVG_geometry
     openMVG_stlplus 
-    openMVG_easyexif           
+    openMVG_easyexif
+    openMVG_numeric
 
+    # FLANN dependency (embedded in OpenMVG but needs LZ4)
+    lz4
 
     # link OpenMVS libs
     # MVS - main library.

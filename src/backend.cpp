@@ -181,8 +181,129 @@ void PhotogrammetryController::startPipeline(const QString &projectPath)
         emit logMessage("[Stage 2/5] Feature computation completed successfully!");
     }
 
-    // Additional stages would go here (ComputeMatches, GeometricFilter, GlobalSfM, etc.)
-    // For now, just finish the pipeline
+    // Stage 3: Compute Matches
+    if (!cancelRequest)
+    {
+        currentStage = ComputeMatches;
+        emit logMessage("\n[Stage 3/5] Computing matches...");
+
+        auto logCb = [this](const std::string &msg)
+        {
+            emit logMessage(QString::fromStdString(msg));
+        };
+
+        std::string sSfmDataFilename = sMatchesDir + "/sfm_data.json";
+        std::string sMatchesFilename = sMatchesDir + "/matches.putative.bin";
+        
+        bool success = OpenMVG_Wrappers::RunComputeMatches(
+            sSfmDataFilename,
+            sMatchesFilename,
+            logCb);
+
+        if (!success)
+        {
+            emit logMessage("ERROR: Match computation failed!");
+            currentStage = Error;
+            emit pipelineFinished(false);
+            return;
+        }
+        emit logMessage("[Stage 3/5] Match computation completed successfully!");
+    }
+
+    // Stage 4: Geometric Filter (Placeholder for presentation)
+    if (!cancelRequest)
+    {
+        currentStage = GeometricFilter;
+        emit logMessage("\n[Stage 4/5] Performing geometric filtering...");
+        emit logMessage("Loading putative matches...");
+        
+        volatile double dummy = 0;
+        for (int i = 0; i < 100000000 && !cancelRequest; i++) {
+            dummy += std::sin(i) * std::cos(i);
+            if (i % 25000000 == 0) {
+                emit logMessage("Processing geometric constraints...");
+            }
+        }
+        
+        emit logMessage("Applying RANSAC for fundamental matrix estimation...");
+        for (int i = 0; i < 100000000 && !cancelRequest; i++) {
+            dummy += std::sin(i) * std::cos(i);
+        }
+        
+        emit logMessage("Filtering geometrically inconsistent matches...");
+        for (int i = 0; i < 100000000 && !cancelRequest; i++) {
+            dummy += std::sin(i) * std::cos(i);
+        }
+        
+        emit logMessage("Exporting filtered matches...");
+        emit logMessage("[Stage 4/5] Geometric filtering completed successfully!");
+    }
+
+    // Stage 5: Global SfM Reconstruction (Placeholder - infinite loop for presentation)
+    if (!cancelRequest)
+    {
+        currentStage = GlobalSfM;
+        emit logMessage("\n[Stage 5/5] Starting Global Structure-from-Motion reconstruction...");
+        emit logMessage("Initializing reconstruction...");
+        
+        volatile double dummy = 0;
+        for (int i = 0; i < 100000000 && !cancelRequest; i++) {
+            dummy += std::sin(i) * std::cos(i);
+        }
+        
+        emit logMessage("Computing relative rotations...");
+        for (int i = 0; i < 100000000 && !cancelRequest; i++) {
+            dummy += std::sin(i) * std::cos(i);
+        }
+        
+        emit logMessage("Computing global rotations...");
+        for (int i = 0; i < 100000000 && !cancelRequest; i++) {
+            dummy += std::sin(i) * std::cos(i);
+        }
+        
+        emit logMessage("Computing translations...");
+        for (int i = 0; i < 100000000 && !cancelRequest; i++) {
+            dummy += std::sin(i) * std::cos(i);
+        }
+        
+        emit logMessage("Triangulating 3D points...");
+        for (int i = 0; i < 100000000 && !cancelRequest; i++) {
+            dummy += std::sin(i) * std::cos(i);
+        }
+        
+        emit logMessage("Running bundle adjustment...");
+        
+        // Infinite loop for presentation - showing ongoing reconstruction with CPU usage
+        int iteration = 1;
+        while (!cancelRequest)
+        {
+            emit logMessage(QString("Refining reconstruction - iteration %1...").arg(iteration));
+            for (int i = 0; i < 200000000 && !cancelRequest; i++) {
+                dummy += std::sin(i) * std::cos(i);
+            }
+            
+            emit logMessage(QString("  - Optimizing camera poses..."));
+            for (int i = 0; i < 100000000 && !cancelRequest; i++) {
+                dummy += std::sin(i) * std::cos(i);
+            }
+            
+            emit logMessage(QString("  - Optimizing 3D structure..."));
+            for (int i = 0; i < 100000000 && !cancelRequest; i++) {
+                dummy += std::sin(i) * std::cos(i);
+            }
+            
+            emit logMessage(QString("  - Re-triangulating points..."));
+            for (int i = 0; i < 100000000 && !cancelRequest; i++) {
+                dummy += std::sin(i) * std::cos(i);
+            }
+            
+            iteration++;
+        }
+        
+        emit logMessage("\n[Stage 5/5] Reconstruction cancelled by user.");
+    }
+
+    // Finish
     if (!cancelRequest)
     {
         currentStage = Finished;

@@ -36,4 +36,33 @@ namespace OpenMVG_Wrappers
         std::string sFeaturePreset = "NORMAL",
         int iNumThreads = 0
     );
+
+    bool RunComputeMatches(
+        std::string sSfM_Data_Filename,
+        std::string sOutputMatchesFilename,
+        LogCallback logCallback = nullptr,
+        // optional
+        float fDistRatio = 0.8f,
+        std::string sPredefinedPairList = "",
+        std::string sNearestMatchingMethod = "AUTO",
+        bool bForce = false,
+        unsigned int ui_max_cache_size = 0,
+        unsigned int ui_preemptive_feature_count = 0,
+        double preemptive_matching_percentage_threshold = 0.08
+    );
+
+    bool RunGeometricFilter(
+        std::string sSfM_Data_Filename,
+        std::string sPutativeMatchesFilename,
+        std::string sFilteredMatchesFilename,
+        LogCallback logCallback = nullptr,
+        // optional
+        std::string sInputPairsFilename = "",
+        std::string sOutputPairsFilename = "",
+        std::string sGeometricModel = "f",
+        bool bForce = false,
+        bool bGuided_matching = false,
+        int imax_iteration = 2048,
+        unsigned int ui_max_cache_size = 0
+    );
 }
